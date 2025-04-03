@@ -1,0 +1,116 @@
+import random
+import csv
+from datetime import datetime
+
+# Liste cu nume și prenume pentru generare
+judete = ["01", "02", "03", "04", "05", "06", "07", "08", "09", "10", "11", "12", "13"]
+nume = ["Popescu", "Ionescu", "Dumitru", "Georgescu", "Vasilescu", "Marinescu", "Stan", "Diaconu"]
+prenume = ["Andrei", "Maria", "Elena", "Mihai", "Ioana", "Gabriel", "Ana", "Florin"]
+
+
+def generate_cnp():
+    sex = random.choice([1, 2])  # 1 - masculin, 2 - feminin
+    year = random.randint(1960, 2010)
+    month = random.randint(1, 12)
+    day = random.randint(1, 28)  # Simplificat
+    judet = random.choice(judete)
+    nnn = random.randint(100, 999)
+
+    year_short = str(year)[-2:]
+    cnp_base = f"{sex}{year_short}{month:02d}{day:02d}{judet}{nnn}"
+    control = random.randint(0, 9)  # Nu e verificat oficial
+    return cnp_base + str(control)
+
+
+def generate_csv(filename="cnp_data.csv", num=1000000):
+    print("Generare fișier CSV cu 1.000.000 de CNP-uri...")
+    with open(filename, "w", newline="") as file:
+        writer = csv.writer(file)
+        writer.writerow(["CNP", "Nume"])
+        for _ in range(num):
+            cnp = generate_cnp()
+            full_name = f"{random.choice(prenume)} {random.choice(nume)}"
+            writer.writerow([cnp, full_name])
+    print("Fișierul CSV a fost generat cu succes!")
+
+# Verificare fișier CSV după generare
+with open("cnp_data.csv", "r") as file:
+    for _ in range(1000000):
+        print(file.readline().strip())  # Afișează primele 5 linii
+
+
+# Implementare Hash Table
+class HashTable:
+    def __init__(self, size=1000003):  # Număr prim apropiat de 1.000.000
+        self.size = size
+        self.table = [None] * size
+
+    def hash_function(self, cnp):
+        return sum(ord(c) for c in cnp) % self.size
+
+    def insert(self, cnp, name):
+        index = self.hash_function(cnp)
+        if self.table[index] is None:
+            self.table[index] = []
+        self.table[index].append((cnp, name))
+
+    def search(self, cnp):
+        index = self.hash_function(cnp)
+        if self.table[index]:
+            for record in self.table[index]:
+                if record[0] == cnp:
+                    return record[1]
+        return None
+
+
+def load_data_to_hash_table(filename="cnp_data.csv"):
+    ht = HashTable()
+    with open(filename, "r") as file:
+        reader = csv.reader(file)
+        next(reader)  # Skip header
+        for row in reader:
+            ht.insert(row[0], row[1])
+    print("Datele au fost încărcate cu succes în Hash Table!")
+    return ht
+
+
+def test_search_performance(ht, filename="cnp_data.csv", num_tests=1000):
+    cnp_list = []
+    with open(filename, "r") as file:
+        reader = csv.reader(file)
+        next(reader)  # Skip header
+        for row in reader:
+            cnp_list.append(row[0])
+
+    test_samples = random.sample(cnp_list, num_tests)
+    search_times = []
+
+    for cnp in test_samples:
+        start = datetime.now()
+        ht.search(cnp)
+        end = datetime.now()
+        search_times.append((end - start).total_seconds())
+
+    avg_time = sum(search_times) / len(search_times)
+    print(f"Timp mediu de căutare: {avg_time:.6f} secunde")
+
+
+# Generare CSV
+generate_csv()
+
+# Creare și populare hash table
+hash_table = load_data_to_hash_table()
+
+# Testare performanță
+test_search_performance(hash_table)
+
+# Căutare manuală
+while True:
+    user_cnp = input("Introdu un CNP pentru căutare (sau 'exit' pentru a ieși): ")
+    if user_cnp.lower() == "exit":
+        break
+    result = hash_table.search(user_cnp)
+    if result:
+        print(f"Numele asociat CNP-ului {user_cnp} este: {result}")
+    else:
+        print("CNP-ul nu a fost găsit!")
